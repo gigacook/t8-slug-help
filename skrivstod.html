@@ -1,0 +1,724 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Skrivstöd Läkemedelsberättelse</title>
+<meta name="description" content="Personligt språkstöd för vård- och läkemedelsberättelser i VGR-stil, byggt på en före/efter-jämförelse.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f6f5fb; --surface:#ffffff; --surface-2:#faf9fd; --ink:#26242f; --muted:#6a6780; --line:#e7e4f0;
+  --lav:#ece7ff; --lav-ink:#5a48b5;
+  --mint:#dcf5ea; --mint-ink:#1d7350;
+  --peach:#ffe8db; --peach-ink:#a8502a;
+  --rose:#ffe2ea; --rose-ink:#a8365a;
+  --sky:#e0f0ff; --sky-ink:#2a659e;
+  --butter:#fff3c9; --butter-ink:#7d6200;
+  --shadow:0 1px 2px rgba(40,30,80,.04),0 6px 24px rgba(40,30,80,.06);
+  --radius:18px; --gutter:16px; --fs:16px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#16151c; --surface:#1f1e27; --surface-2:#24232d; --ink:#ecebf3; --muted:#a3a0b8; --line:#33313f;
+    --lav:#2e2948; --lav-ink:#c7bcff;
+    --mint:#1f3a30; --mint-ink:#93e2bd;
+    --peach:#3d2a21; --peach-ink:#ffbf9c;
+    --rose:#3d2430; --rose-ink:#ffaac3;
+    --sky:#1f3042; --sky-ink:#a6d2ff;
+    --butter:#3a3320; --butter-ink:#f5d97a;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 24px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#16151c; --surface:#1f1e27; --surface-2:#24232d; --ink:#ecebf3; --muted:#a3a0b8; --line:#33313f;
+  --lav:#2e2948; --lav-ink:#c7bcff; --mint:#1f3a30; --mint-ink:#93e2bd; --peach:#3d2a21; --peach-ink:#ffbf9c;
+  --rose:#3d2430; --rose-ink:#ffaac3; --sky:#1f3042; --sky-ink:#a6d2ff; --butter:#3a3320; --butter-ink:#f5d97a;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 24px rgba(0,0,0,.25);
+}
+/* device-tuned values (set by script below, media queries as fallback) */
+:root[data-device="phone"]{ --fs:15.5px; --radius:16px; }
+:root[data-device="laptop"]{ --fs:16.5px; }
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%; text-size-adjust:100%}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font:400 var(--fs)/1.6 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  overflow-x:hidden; overflow-wrap:anywhere;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+.wrap{max-width:860px; margin:0 auto; padding:32px var(--gutter) 64px}
+h1{font-size:clamp(1.6rem,4.5vw,2.3rem); line-height:1.15; letter-spacing:-.02em; margin:.2em 0 .35em; font-weight:700}
+h3{font-size:1.02rem; margin:1.1em 0 .4em; font-weight:600}
+p{margin:.5em 0}
+.eyebrow{display:inline-block; font-size:.78rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--lav-ink); background:var(--lav); padding:4px 10px; border-radius:999px}
+.lead{color:var(--muted); font-size:1.05em; max-width:62ch}
+
+/* legend + stats */
+.legend{display:flex; flex-wrap:wrap; gap:8px; margin:18px 0 6px}
+.chip{display:inline-flex; align-items:center; gap:6px; font-size:.8rem; font-weight:600; padding:4px 10px; border-radius:999px; white-space:nowrap}
+.chip.strong{background:var(--mint); color:var(--mint-ink)}
+.chip.repeat{background:var(--rose); color:var(--rose-ink)}
+.chip.easy{background:var(--butter); color:var(--butter-ink)}
+.chip.warn{background:var(--peach); color:var(--peach-ink)}
+.chip.tip{background:var(--sky); color:var(--sky-ink)}
+.chip.bg{background:var(--lav); color:var(--lav-ink)}
+.stats{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin:20px 0}
+.stat{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px; box-shadow:var(--shadow)}
+.stat b{display:block; font-size:1.6rem; line-height:1.1; letter-spacing:-.02em}
+.stat span{font-size:.82rem; color:var(--muted)}
+.stat.s1 b{color:var(--mint-ink)} .stat.s2 b{color:var(--rose-ink)} .stat.s3 b{color:var(--butter-ink)}
+
+.toolbar{display:flex; gap:8px; justify-content:flex-end; margin:6px 0 12px}
+.btn{font:inherit; font-size:.85rem; font-weight:600; color:var(--lav-ink); background:var(--lav); border:0; padding:8px 14px; border-radius:999px; cursor:pointer; min-height:36px}
+.btn:focus-visible{outline:2px solid var(--lav-ink); outline-offset:2px}
+
+/* collapsible sections */
+details.sec{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); margin:12px 0; overflow:hidden}
+details.sec > summary{list-style:none; cursor:pointer; padding:16px 18px; display:flex; align-items:center; gap:12px; user-select:none; -webkit-tap-highlight-color:transparent}
+details.sec > summary::-webkit-details-marker{display:none}
+details.sec > summary:focus-visible{outline:2px solid var(--lav-ink); outline-offset:-2px; border-radius:var(--radius)}
+.num{flex:0 0 auto; width:32px; height:32px; border-radius:10px; display:grid; place-items:center; font-weight:700; font-size:.9rem}
+.sum-text{flex:1 1 auto; min-width:0}
+.sum-title{font-weight:600; font-size:1.04rem; line-height:1.3}
+.sum-sub{font-size:.84rem; color:var(--muted); margin-top:2px}
+.sum-tags{display:flex; flex-wrap:wrap; gap:6px; margin-top:6px}
+.sum-tags .chip{font-size:.72rem; padding:2px 8px}
+.chev{flex:0 0 auto; width:22px; height:22px; color:var(--muted); transition:transform .2s ease}
+details[open] > summary .chev{transform:rotate(90deg)}
+.body{padding:2px 18px 18px; border-top:1px solid var(--line)}
+
+.n-mint{background:var(--mint); color:var(--mint-ink)} .n-rose{background:var(--rose); color:var(--rose-ink)}
+.n-butter{background:var(--butter); color:var(--butter-ink)} .n-sky{background:var(--sky); color:var(--sky-ink)}
+.n-lav{background:var(--lav); color:var(--lav-ink)} .n-peach{background:var(--peach); color:var(--peach-ink)}
+
+.core{margin:14px 0 6px; padding:12px 14px; border-radius:12px; background:var(--surface-2); border-left:4px solid var(--lav-ink); font-weight:500}
+.core small{display:block; font-size:.72rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--lav-ink); margin-bottom:2px}
+
+/* callouts */
+.co{border-radius:12px; padding:12px 14px; margin:12px 0; font-size:.95em}
+.co .lbl{display:block; font-size:.72rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; margin-bottom:3px}
+.co.strong{background:var(--mint)} .co.strong .lbl{color:var(--mint-ink)}
+.co.repeat{background:var(--rose)} .co.repeat .lbl{color:var(--rose-ink)}
+.co.easy{background:var(--butter)} .co.easy .lbl{color:var(--butter-ink)}
+.co.warn{background:var(--peach)} .co.warn .lbl{color:var(--peach-ink)}
+.co.tip{background:var(--sky)} .co.tip .lbl{color:var(--sky-ink)}
+.co.bg{background:var(--lav)} .co.bg .lbl{color:var(--lav-ink)}
+.co p{margin:.3em 0}
+
+/* example rows */
+.ex{border:1px solid var(--line); border-radius:12px; overflow:hidden; margin:10px 0}
+.ex > div{display:grid; grid-template-columns:26px minmax(0,1fr); gap:6px; padding:9px 12px; align-items:start}
+.ex > div + div{border-top:1px solid var(--line)}
+.ex .mk{font-weight:700; text-align:center}
+.ex .no{background:color-mix(in srgb,var(--rose) 55%,transparent)} .ex .no .mk{color:var(--rose-ink)}
+.ex .yes{background:color-mix(in srgb,var(--mint) 55%,transparent)} .ex .yes .mk{color:var(--mint-ink)}
+.ex .why{font-size:.86em; color:var(--muted)}
+mark.b{background:var(--rose); color:var(--rose-ink); border-radius:4px; padding:0 3px}
+mark.g{background:var(--mint); color:var(--mint-ink); border-radius:4px; padding:0 3px; font-weight:600}
+em.fr{font-style:normal; font-size:.86em; color:var(--lav-ink); background:var(--lav); padding:1px 6px; border-radius:6px}
+
+ul.clean{padding-left:1.1em; margin:.4em 0} ul.clean li{margin:.25em 0}
+.grid2{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px}
+.mini{background:var(--surface-2); border:1px solid var(--line); border-radius:12px; padding:10px 12px}
+.mini b{display:block; font-size:.86rem}
+.mini span{font-size:.86rem; color:var(--muted)}
+
+.tbl{width:100%; border-collapse:collapse; font-size:.92em; margin:10px 0}
+.tbl th,.tbl td{text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top}
+.tbl th{font-size:.75rem; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); font-weight:600}
+
+.v2{display:flex; flex-wrap:wrap; gap:6px; margin:10px 0}
+.v2 span{padding:6px 10px; border-radius:10px; font-weight:600; font-size:.92em}
+.v2 .p1{background:var(--sky); color:var(--sky-ink)} .v2 .p2{background:var(--rose); color:var(--rose-ink)}
+.v2 .p3{background:var(--mint); color:var(--mint-ink)} .v2 .p4{background:var(--surface-2); border:1px solid var(--line)}
+.v2 small{display:block; font-size:.66rem; font-weight:600; opacity:.75; text-transform:uppercase; letter-spacing:.06em}
+
+.doc{font:400 .9em/1.6 "JetBrains Mono",ui-monospace,Menlo,monospace; white-space:pre-wrap; background:var(--surface-2); border:1px solid var(--line); border-radius:12px; padding:14px; margin:10px 0; overflow-wrap:anywhere}
+.model{background:var(--surface-2); border:1px solid var(--line); border-radius:12px; padding:4px 16px 12px; margin:10px 0}
+.model h4{margin:14px 0 4px; font-size:.78rem; letter-spacing:.06em; text-transform:uppercase; color:var(--lav-ink)}
+.model p,.model li{margin:.25em 0}
+
+.check label{display:flex; gap:10px; align-items:flex-start; padding:10px 4px; border-bottom:1px solid var(--line); cursor:pointer; min-height:44px}
+.check input{width:20px; height:20px; margin-top:2px; accent-color:var(--lav-ink); flex:0 0 auto}
+.check input:checked + span{color:var(--muted); text-decoration:line-through}
+
+footer{color:var(--muted); font-size:.82rem; text-align:center; margin-top:28px}
+
+/* phone layout */
+:root[data-device="phone"] .stats{grid-template-columns:1fr 1fr 1fr; gap:8px}
+:root[data-device="phone"] .stat{padding:10px}
+:root[data-device="phone"] .stat b{font-size:1.3rem}
+:root[data-device="phone"] .stat span{font-size:.74rem}
+:root[data-device="phone"] .grid2{grid-template-columns:1fr}
+:root[data-device="phone"] details.sec > summary{padding:14px}
+:root[data-device="phone"] .body{padding:2px 14px 16px}
+:root[data-device="phone"] .wrap{padding-top:20px}
+:root[data-device="phone"] .tbl{font-size:.85em}
+:root[data-device="phone"] .tbl th,:root[data-device="phone"] .tbl td{padding:7px 6px}
+:root[data-input="touch"] .btn{min-height:44px; padding:10px 16px}
+@media (max-width:640px){
+  .grid2{grid-template-columns:1fr}
+  .stat b{font-size:1.3rem}
+}
+@media (prefers-reduced-motion:reduce){ .chev{transition:none} }
+</style>
+<script>
+/* device detection: sets data-device (phone/tablet/laptop) and data-input (touch/mouse) */
+(function(){
+  var d=document.documentElement;
+  function set(){
+    var w=Math.min(window.innerWidth, (screen && screen.width) || window.innerWidth);
+    var coarse=window.matchMedia && matchMedia('(pointer:coarse)').matches;
+    d.dataset.device = w<640 ? 'phone' : (w<1024 ? 'tablet' : 'laptop');
+    d.dataset.input = coarse ? 'touch' : 'mouse';
+  }
+  set();
+  window.addEventListener('resize', set, {passive:true});
+  window.addEventListener('orientationchange', set);
+})();
+</script>
+</head>
+<body>
+<main class="wrap">
+
+<header>
+  <span class="eyebrow">Skrivstöd · VGR-stil</span>
+  <h1>Vård- och läkemedels&shy;berättelsen – din personliga språkguide</h1>
+  <p class="lead">Byggd på en riktig, avidentifierad utskrivningstext: din version och en snabb språkgenomgång av den. Målet är inte att leta fel, utan att visa de få mönster som ger mest effekt. Grunden i din text är redan stark.</p>
+  <div class="legend">
+    <span class="chip strong">● Styrka</span>
+    <span class="chip repeat">● Återkommer</span>
+    <span class="chip easy">● Snabb vinst</span>
+    <span class="chip warn">● Se upp</span>
+    <span class="chip tip">● Tips</span>
+    <span class="chip bg">● Varför just du?</span>
+  </div>
+  <div class="stats">
+    <div class="stat s1"><b>6</b><span>saker du gör bra</span></div>
+    <div class="stat s2"><b>3</b><span>mönster som återkommer</span></div>
+    <div class="stat s3"><b>6</b><span>snabba vinster</span></div>
+  </div>
+</header>
+
+<div class="toolbar">
+  <button class="btn" type="button" id="toggleAll" aria-pressed="false">Öppna alla</button>
+</div>
+
+<!-- 1 STRENGTHS -->
+<details class="sec">
+  <summary>
+    <span class="num n-mint">1</span>
+    <span class="sum-text">
+      <span class="sum-title" style="display:block">Det här gör du redan bra</span>
+      <span class="sum-sub" style="display:block">Börja här – det är mycket som sitter.</span>
+      <span class="sum-tags"><span class="chip strong">Styrka</span></span>
+    </span>
+    <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+  </summary>
+  <div class="body">
+    <div class="core"><small>Kärnan</small>Innehållet är komplett, kommer i rätt ordning och vänder sig till patienten. Det som återstår är finslipning av språket, inte av det medicinska tänkandet.</div>
+
+    <h3>Du skriver till patienten</h3>
+    <p>"Du har kommit till oss…", "Du har fått…", "din vårdcentral". Det är precis vad berättelsen ska vara: ett brev till patienten, inte en journalanteckning om patienten.</p>
+
+    <h3>Logisk ordning</h3>
+    <p>Orsak → vad som hände under vårdtiden → läkemedel → planering → kontakt. En patient kan följa den tråden utan att hoppa fram och tillbaka.</p>
+
+    <h3>Du förklarar varför</h3>
+    <p>"…<mark class="g">för att minska</mark> spasmer i underbenen." Det är viktigast i en läkemedelsberättelse: inte bara <i>vad</i> som är nytt, utan <i>varför</i>. Många glömmer det. Du gjorde det inte.</p>
+
+    <h3>Ett rikt och korrekt fackordförråd</h3>
+    <p><i>tidsbegränsat muntligt körförbud, beviljat korttidsboende, vårdplanering, fortsatt uppföljning av, remittera</i>. Allt är idiomatiskt och används rätt.</p>
+
+    <div class="co strong"><span class="lbl">Styrka · du kan grammatiken</span>
+      <p>I samma lista skrev du både "Remiss är <mark class="b">skickat</mark>" och "Remiss även <mark class="g">skickad</mark>". Den andra är helt rätt. Felen kommer alltså av tempo och inte av att kunskapen saknas, och det är mycket lättare att rätta.</p>
+    </div>
+    <div class="co strong"><span class="lbl">Styrka · struktur</span>
+      <p>Planeringen står i punktlista och läkemedelslistan är konsekvent formaterad. Båda är lätta att skumma.</p>
+    </div>
+  </div>
+</details>
+
+<!-- 2 QUICK WINS -->
+<details class="sec">
+  <summary>
+    <span class="num n-butter">2</span>
+    <span class="sum-text">
+      <span class="sum-title" style="display:block">Sex snabba vinster</span>
+      <span class="sum-sub" style="display:block">Små ändringar som syns direkt i varje text.</span>
+      <span class="sum-tags"><span class="chip easy">Snabb vinst</span></span>
+    </span>
+    <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+  </summary>
+  <div class="body">
+    <div class="core"><small>Kärnan</small>Lär dig de här sex och ungefär 80 % av språkfelen i texten försvinner.</div>
+
+    <h3>1 · Skriv alltid ut "du"</h3>
+    <div class="ex"><div class="no"><span class="mk">✗</span><span>Har dock spasmer i underbenen</span></div><div class="yes"><span class="mk">✓</span><span><mark class="g">Du har</mark> också spasmer i underbenen</span></div></div>
+
+    <h3>2 · Byt plats efter "därför"</h3>
+    <div class="ex"><div class="no"><span class="mk">✗</span><span>därför du testar behandling</span></div><div class="yes"><span class="mk">✓</span><span>därför <mark class="g">testar du</mark> behandling</span></div></div>
+
+    <h3>3 · "att" före verbet</h3>
+    <div class="ex"><div class="no"><span class="mk">✗</span><span>som inte gick operera</span></div><div class="yes"><span class="mk">✓</span><span>som inte gick <mark class="g">att</mark> operera</span></div></div>
+
+    <h3>4 · Skriv i aktiv form, så slipper du böjningen</h3>
+    <div class="ex"><div class="no"><span class="mk">✗</span><span>Remiss är skickat till din vårdcentral</span></div><div class="yes"><span class="mk">✓</span><span><mark class="g">Vi har skickat</mark> en remiss till din vårdcentral</span></div></div>
+
+    <h3>5 · bedömer: ett m</h3>
+    <div class="ex"><div class="no"><span class="mk">✗</span><span>Vc bedö<mark class="b">mm</mark>er</span></div><div class="yes"><span class="mk">✓</span><span>Vårdcentralen bedö<mark class="g">m</mark>er</span></div></div>
+
+    <h3>6 · Doser i ord, inga förkortningar</h3>
+    <div class="ex"><div class="no"><span class="mk">✗</span><span>Baklofen 10 mg 0,5 x 1 … Vc … tabl. … ca … mån.</span></div><div class="yes"><span class="mk">✓</span><span>Baklofen 10 mg, <mark class="g">en halv tablett en gång per dag</mark> … vårdcentralen … cirka tre månader</span></div></div>
+
+    <div class="co tip"><span class="lbl">Tips</span><p>Sätt upp de här sex som en lapp vid skärmen. Läs igenom texten en gång <i>bara</i> för dem innan du signerar. Det tar ungefär 30 sekunder.</p></div>
+  </div>
+</details>
+
+<!-- 3 V2 WORD ORDER -->
+<details class="sec">
+  <summary>
+    <span class="num n-rose">3</span>
+    <span class="sum-text">
+      <span class="sum-title" style="display:block">Ordföljd: verbet står på plats två</span>
+      <span class="sum-sub" style="display:block">"Därför testar du", inte "därför du testar".</span>
+      <span class="sum-tags"><span class="chip repeat">Återkommer</span><span class="chip bg">Varför just du?</span></span>
+    </span>
+    <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+  </summary>
+  <div class="body">
+    <div class="core"><small>Kärnan</small>I en svensk huvudsats står verbet alltid på plats två. Börjar meningen med något annat än subjektet (<i>därför, sedan, efter behandlingen, under vårdtiden</i>) byter verb och subjekt plats.</div>
+
+    <div class="v2">
+      <span class="p1"><small>Plats 1</small>Därför</span>
+      <span class="p2"><small>Plats 2 · verb</small>testar</span>
+      <span class="p3"><small>Subjekt</small>du</span>
+      <span class="p4"><small>Resten</small>behandling med Baklofen.</span>
+    </div>
+
+    <h3>Från din text</h3>
+    <div class="ex">
+      <div class="no"><span class="mk">✗</span><span>…och därför du testar behandling med Baklofen</span></div>
+      <div class="yes"><span class="mk">✓</span><span>…och därför <mark class="g">testar du</mark> behandling med Baklofen</span></div>
+    </div>
+
+    <h3>Mönster att nöta in</h3>
+    <div class="grid2">
+      <div class="mini"><b>Därför fick du …</b><span>inte: därför du fick</span></div>
+      <div class="mini"><b>Under vårdtiden har du …</b><span>inte: under vårdtiden du har</span></div>
+      <div class="mini"><b>Efter behandlingen fick du …</b><span>inte: efter behandlingen du fick</span></div>
+      <div class="mini"><b>Vid vårdplaneringen beviljades du …</b><span>inte: vid vårdplaneringen du beviljades</span></div>
+    </div>
+
+    <div class="co bg"><span class="lbl">Varför just du?</span>
+      <p>Varken franskan eller arabiskan byter plats här. På franska heter det <em class="fr">donc tu testes</em>, med subjektet före verbet. Därför känns "därför testar du" bakvänt, men det är just den ordningen svenskan kräver. Felet är mycket vanligt hos skribenter med franska eller arabiska som starka språk.</p>
+    </div>
+    <div class="co warn"><span class="lbl">Se upp · undantaget</span>
+      <p>I bisatser (efter <i>eftersom, att, som, om, när</i>) byter man <b>inte</b> plats, och <i>inte</i> hamnar före verbet:</p>
+      <p><mark class="g">eftersom det inte gick att operera</mark> (inte: eftersom det gick inte)</p>
+    </div>
+  </div>
+</details>
+
+<!-- 4 SUBJECT -->
+<details class="sec">
+  <summary>
+    <span class="num n-rose">4</span>
+    <span class="sum-text">
+      <span class="sum-title" style="display:block">Varje mening behöver ett subjekt och ett verb</span>
+      <span class="sum-sub" style="display:block">Fem ställen i texten saknar "du", och två meningar saknar verb.</span>
+      <span class="sum-tags"><span class="chip repeat">Återkommer ×7</span><span class="chip bg">Varför just du?</span></span>
+    </span>
+    <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+  </summary>
+  <div class="body">
+    <div class="core"><small>Kärnan</small>Svenska verb ser likadana ut för alla personer (<i>jag/du/hon behöver</i>). Därför är pronomenet det enda som visar vem det handlar om, och det får aldrig falla bort.</div>
+
+    <h3>Subjektet saknas eller blev "det"</h3>
+    <div class="ex">
+      <div class="no"><span class="mk">✗</span><span><mark class="b">Det</mark> har fått en urinvägsinfektion</span></div>
+      <div class="yes"><span class="mk">✓</span><span><mark class="g">Du</mark> har fått en urinvägsinfektion</span></div>
+      <div class="no"><span class="mk">✗</span><span><mark class="b">Det</mark> fick även träna bålbalans</span></div>
+      <div class="yes"><span class="mk">✓</span><span><mark class="g">Du</mark> fick även träna bålbalans</span></div>
+      <div class="no"><span class="mk">✗</span><span>Har dock spasmer · Behöver hjälp med det mesta · Om har frågor</span></div>
+      <div class="yes"><span class="mk">✓</span><span><mark class="g">Du</mark> har spasmer · <mark class="g">Du</mark> behöver hjälp · Om <mark class="g">du</mark> har frågor</span></div>
+    </div>
+
+    <h3>Verbet saknas</h3>
+    <div class="ex">
+      <div class="no"><span class="mk">✗</span><span>…urinvägsinfektion därför antibiotikabehandling.</span></div>
+      <div class="yes"><span class="mk">✓</span><span>…urinvägsinfektion, som <mark class="g">behandlades</mark> med antibiotika.</span></div>
+      <div class="no"><span class="mk">✗</span><span>…därför en vårdplanering med beviljat korttidsboende.</span></div>
+      <div class="yes"><span class="mk">✓</span><span>Vid vårdplaneringen <mark class="g">beviljades</mark> du korttidsboende.</span></div>
+    </div>
+
+    <div class="co bg"><span class="lbl">Varför just du?</span>
+      <p><b>Arabiska:</b> verbet bär personen i sig (<i>taḥtāj</i> = "du behöver"), så pronomenet utelämnas ofta. Arabiskan har också nominalsatser utan "vara" i presens. Därför känns en mening utan verb naturlig, men på svenska blir den ofullständig.</p>
+      <p><b>"Det" i stället för "du"</b> kan vara en diktat- eller tangentbordsmiss, men det hände två gånger. Läs därför extra noga på det ordet.</p>
+    </div>
+    <div class="co warn"><span class="lbl">Se upp · "det" har en egen uppgift</span>
+      <p>"Det" är ett tomt subjekt för sådant som inte är en person: <i>Det finns…, Det gick inte att operera…, Det blev bättre.</i> När det handlar om patienten är det alltid <b>du</b>.</p>
+    </div>
+    <div class="co warn"><span class="lbl">Se upp · "dock"</span>
+      <p><i>Dock</i> betyder "men / ändå" och kräver en motsats. "Har <mark class="b">dock</mark> spasmer" följer på en mening om infektionen, så det finns ingen motsats. Skriv <mark class="g">också</mark>, eller inget alls.</p>
+    </div>
+    <div class="co tip"><span class="lbl">Tips · en mening, ett faktum</span>
+      <p>Långa kedjor med <i>och … därför … och</i> (jämför arabiskans <i>wa … fa …</i>) gör det lätt att tappa subjekt och verb. Dela upp: högst 15–20 ord per mening. Det är också kärnan i klarspråk.</p>
+    </div>
+  </div>
+</details>
+
+<!-- 5 SMALL WORDS -->
+<details class="sec">
+  <summary>
+    <span class="num n-rose">5</span>
+    <span class="sum-text">
+      <span class="sum-title" style="display:block">Små ord med stor effekt: att, på, som/eftersom</span>
+      <span class="sum-sub" style="display:block">Prepositioner och småord, där franskan spelar dig ett spratt.</span>
+      <span class="sum-tags"><span class="chip repeat">Återkommer</span><span class="chip bg">Varför just du?</span></span>
+    </span>
+    <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+  </summary>
+  <div class="body">
+    <div class="core"><small>Kärnan</small>Tre småord föll bort eller blev fel: <b>att</b> före verb, <b>på</b> före plats och <b>som</b> där det ska vara <b>eftersom</b>.</div>
+
+    <h3>"att" före verb</h3>
+    <div class="ex">
+      <div class="no"><span class="mk">✗</span><span>inte gick operera · träna använda rullstol</span></div>
+      <div class="yes"><span class="mk">✓</span><span>inte gick <mark class="g">att</mark> operera · träna <mark class="g">på att</mark> använda rullstol</span></div>
+    </div>
+    <table class="tbl">
+      <tr><th>Med "att"</th><th>Utan "att"</th></tr>
+      <tr><td>gick att, försöka att, börja att, sluta att, träna på att</td><td>kan, ska, måste, behöver, får, vill, bör</td></tr>
+      <tr><td><i>Det gick inte att operera.</i></td><td><i>Du behöver ta tabletten till natten.</i></td></tr>
+    </table>
+
+    <h3>"som" ≠ "eftersom"</h3>
+    <div class="ex">
+      <div class="no"><span class="mk">✗</span><span>spinalstenos som inte gick operera <mark class="b">som</mark> den satte sig flera ställen</span></div>
+      <div class="yes"><span class="mk">✓</span><span>…som inte gick att operera, <mark class="g">eftersom</mark> den satt <mark class="g">på</mark> flera ställen</span></div>
+    </div>
+    <div class="co bg"><span class="lbl">Varför just du?</span>
+      <p>Franskans <em class="fr">comme</em> betyder både "som" och "eftersom" (<em class="fr">comme elle était…</em>). På svenska betyder <b>som</b> bara "vilken/vilket" eller "lik". Orsak uttrycks alltid med <b>eftersom</b>.</p>
+    </div>
+
+    <h3>Prepositioner från texten</h3>
+    <table class="tbl">
+      <tr><th>Skrivet</th><th>Bättre</th></tr>
+      <tr><td>satte sig flera ställen</td><td>sitter <b>på</b> flera ställen</td></tr>
+      <tr><td>skriva meddelande på din 1177</td><td>skicka ett meddelande <b>via</b> 1177</td></tr>
+      <tr><td>tecken till växt</td><td>tecken <b>på</b> växt</td></tr>
+      <tr><td>Finns i separat recept</td><td>Du har fått ett separat recept</td></tr>
+    </table>
+    <div class="co strong"><span class="lbl">Styrka</span><p><i>uppföljning <b>av</b></i>, <i>behandling <b>med</b></i>, <i>remiss <b>till</b></i>: alla rätt. Det är precis de prepositioner som andraspråksskribenter brukar missa.</p></div>
+  </div>
+</details>
+
+<!-- 6 AGREEMENT -->
+<details class="sec">
+  <summary>
+    <span class="num n-peach">6</span>
+    <span class="sum-text">
+      <span class="sum-title" style="display:block">Böjning: en/ett, de/dem</span>
+      <span class="sum-sub" style="display:block">Du kan reglerna, de halkar bara när det går fort.</span>
+      <span class="sum-tags"><span class="chip warn">Se upp</span><span class="chip easy">Snabb vinst</span></span>
+    </span>
+    <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+  </summary>
+  <div class="body">
+    <div class="core"><small>Kärnan</small>Ordets genus styr participet: <b>en</b> remiss är skicka<b>d</b>, <b>ett</b> recept är skicka<b>t</b>, <b>flera</b> remisser är skicka<b>de</b>.</div>
+
+    <div class="ex">
+      <div class="no"><span class="mk">✗</span><span>Remiss är skicka<mark class="b">t</mark> till din vårdcentral</span></div>
+      <div class="yes"><span class="mk">✓</span><span>En remiss är skicka<mark class="g">d</mark>, eller ännu enklare: <mark class="g">Vi har skickat</mark> en remiss</span></div>
+    </div>
+    <div class="co easy"><span class="lbl">Snabb vinst · aktiv form</span>
+      <p>"Vi har skickat" har samma form oavsett om det gäller en remiss, ett recept eller flera remisser. Böjningsfelet försvinner, och patienten ser vem som gjorde vad. Det är också klarspråk.</p>
+    </div>
+
+    <h3>de / dem</h3>
+    <div class="ex">
+      <div class="no"><span class="mk">✗</span><span>be <mark class="b">de</mark> bli kopplad till avdelningen</span></div>
+      <div class="yes"><span class="mk">✓</span><span>be <mark class="g">dem</mark> koppla dig till avdelningen / be att bli kopplad</span></div>
+    </div>
+    <div class="co tip"><span class="lbl">Tips</span><p>Kan du säga <i>them</i> eller <em class="fr">les/leur</em>, så heter det <b>dem</b>. Kan du säga <i>they</i> eller <em class="fr">ils</em>, så heter det <b>de</b>. Många som har svenska som modersmål blandar också ihop dem, så det är inget att skämmas för.</p></div>
+
+    <div class="co bg"><span class="lbl">Varför just du?</span>
+      <p>Franskan och arabiskan har maskulinum och femininum, men det säger ingenting om svenskans en/ett. Lär in substantivet tillsammans med artikeln: <i>en remiss, ett recept, en kateter, ett prov, en odling</i>.</p>
+    </div>
+  </div>
+</details>
+
+<!-- 7 SPELLING & TYPOGRAPHY -->
+<details class="sec">
+  <summary>
+    <span class="num n-butter">7</span>
+    <span class="sum-text">
+      <span class="sum-title" style="display:block">Stavning och skiljetecken</span>
+      <span class="sum-sub" style="display:block">Dubbla konsonanter och franska mellanslag.</span>
+      <span class="sum-tags"><span class="chip easy">Snabb vinst</span><span class="chip bg">Varför just du?</span></span>
+    </span>
+    <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+  </summary>
+  <div class="body">
+    <div class="core"><small>Kärnan</small>Det är få stavfel, och alla går att fånga med en stavningskontroll och ett snabbt öga på parenteserna.</div>
+
+    <table class="tbl">
+      <tr><th>Skrivet</th><th>Rätt</th><th>Regel</th></tr>
+      <tr><td>bedö<mark class="b">mm</mark>er</td><td>bedö<b>m</b>er</td><td>Lång vokal ger en konsonant: döma, bedöma, bedömer</td></tr>
+      <tr><td>ista<mark class="b">ä</mark>llet</td><td>i stället</td><td>Skrivfel. Språkrådet rekommenderar två ord, men <i>istället</i> godtas</td></tr>
+      <tr><td>(<mark class="b">&nbsp;</mark>Vc</td><td>(vårdcentralen</td><td>Inget mellanslag innanför parentes</td></tr>
+      <tr><td>Osteoporosmottagning och Minnesmottagning</td><td>osteoporosmottagning och minnesmottagning</td><td>Vanliga substantiv skrivs med liten bokstav</td></tr>
+    </table>
+
+    <div class="co bg"><span class="lbl">Varför just du?</span>
+      <p>I fransk typografi står ett mellanslag före <b>: ; ? !</b>, och det följer lätt med in i svenskan, som i "( Vc" och ": ApoDos". På svenska står tecknet direkt efter ordet.</p>
+    </div>
+    <div class="co easy"><span class="lbl">Snabb vinst</span><p>Kör alltid stavningskontrollen på svenska innan du signerar. Den hittar bedömer och istället automatiskt.</p></div>
+  </div>
+</details>
+
+<!-- 8 PLAIN LANGUAGE -->
+<details class="sec">
+  <summary>
+    <span class="num n-sky">8</span>
+    <span class="sum-text">
+      <span class="sum-title" style="display:block">Klarspråk för patienten (VGR-stil)</span>
+      <span class="sum-sub" style="display:block">Skriv som du skulle säga det vid utskrivningssamtalet.</span>
+      <span class="sum-tags"><span class="chip tip">Tips</span><span class="chip warn">Se upp</span></span>
+    </span>
+    <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+  </summary>
+  <div class="body">
+    <div class="core"><small>Kärnan</small>Berättelsen läses hemma vid köksbordet, ofta av en anhörig. Skriv vardagsord först och facktermen inom parentes. Skriv ut alla förkortningar. Använd korta meningar i aktiv form.</div>
+
+    <h3>Vardagsord först</h3>
+    <table class="tbl">
+      <tr><th>Fackterm</th><th>För patienten</th></tr>
+      <tr><td>spinalstenos</td><td>förträngning i ryggradskanalen (spinal stenos)</td></tr>
+      <tr><td>suprapubisk kateter</td><td>kateter genom huden ovanför blygdbenet (suprapubisk kateter)</td></tr>
+      <tr><td>kvarliggande urinkateter</td><td>kateter genom urinröret</td></tr>
+      <tr><td>spasticitet / spasmer</td><td>stelhet och kramp i musklerna</td></tr>
+      <tr><td>odling</td><td>prov</td></tr>
+      <tr><td>remittera</td><td>skicka en remiss</td></tr>
+      <tr><td>0,5 x 1</td><td>en halv tablett en gång per dag</td></tr>
+    </table>
+
+    <div class="co warn"><span class="lbl">Se upp · dubbla ord</span>
+      <p>"…minska <mark class="b">spasticiteten spasmer</mark> i underbenen". Två ord står kvar efter en omformulering. Välj ett: <mark class="g">minska kramperna i underbenen</mark>.</p>
+    </div>
+
+    <h3>Byråkratiska ord som gör texten tyngre</h3>
+    <div class="grid2">
+      <div class="mini"><b>erhålla → få</b><span>Man "erhåller" inte en infektion</span></div>
+      <div class="mini"><b>varpå → sedan / därför</b><span>Låter som ett gammalt protokoll</span></div>
+      <div class="mini"><b>genomföra → göra / ta</b><span>"Vi tog ett prov"</span></div>
+      <div class="mini"><b>gällande → om</b><span>"Om du har frågor om…"</span></div>
+    </div>
+
+    <div class="co warn"><span class="lbl">Se upp · när en text kortas får betydelsen inte ändras</span>
+      <p>Oavsett vem som kortar texten, kontrollera alltid att innebörden är kvar:</p>
+      <ul class="clean">
+        <li><b>"meddela dig via 1177"</b> betyder att <i>vi skriver till dig</i>. Det som avsågs var att <i>du kan skriva till oss</i>: <mark class="g">Du kan också skicka ett meddelande via 1177.</mark></li>
+        <li><b>"hjälper dig till minnesmottagningen"</b> låter som att remissen redan är bestämd. Avsikten var att vårdcentralen <mark class="g">bedömer om</mark> du behöver en remiss.</li>
+      </ul>
+    </div>
+    <div class="co tip"><span class="lbl">Tips · det patienten undrar</span>
+      <p>Svara alltid på tre frågor: <b>Vad hände?</b> <b>Vad är nytt med mina läkemedel, och varför?</b> <b>Vem hör av sig, och när?</b> Om det är känt vem som kallar till kateterbytet, skriv det.</p>
+    </div>
+  </div>
+</details>
+
+<!-- 9 MED STORY TEMPLATE -->
+<details class="sec">
+  <summary>
+    <span class="num n-lav">9</span>
+    <span class="sum-text">
+      <span class="sum-title" style="display:block">Läkemedelsberättelsen: en mall att återanvända</span>
+      <span class="sum-sub" style="display:block">Nya, ändrade och utsatta läkemedel, varje gång med ett varför.</span>
+      <span class="sum-tags"><span class="chip tip">Tips</span><span class="chip warn">Se upp</span></span>
+    </span>
+    <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+  </summary>
+  <div class="body">
+    <div class="core"><small>Kärnan</small>Tre rubriker, alltid i samma ordning. Om en rubrik är tom, skriv "Inga". Då vet patienten att inget har glömts bort.</div>
+
+    <div class="model">
+      <h4>Nya läkemedel</h4>
+      <p><b>Baklofen 10 mg</b>: en halv tablett en gång per dag (5 mg).<br>Varför: för att minska kramp och stelhet i underbenen.<br>Du har fått ett separat recept.</p>
+      <h4>Ändrade läkemedel</h4>
+      <p>Inga.</p>
+      <h4>Utsatta läkemedel</h4>
+      <p>Inga.</p>
+    </div>
+
+    <div class="co strong"><span class="lbl">Styrka</span><p>Ditt original hade redan läkemedel, dos och orsak i en och samma mening. Mallen ger bara samma innehåll en fast plats.</p></div>
+    <div class="co warn"><span class="lbl">Se upp · oavslutad rad</span>
+      <p>En rad i läkemedelslistan slutar med "i 3 månader till och med<mark class="b">....</mark>" och saknar slutdatum i båda versionerna. Patienten vet då inte när behandlingen ska sluta. Fyll i datumet innan du signerar.</p>
+    </div>
+    <div class="co tip"><span class="lbl">Tips</span><p>Gör mallen till en textmall eller ett kortkommando i journalsystemet. Då slipper du formulera rubrikerna varje gång och kan lägga energin på varför-raden.</p></div>
+  </div>
+</details>
+
+<!-- 10 MODEL TEXT -->
+<details class="sec">
+  <summary>
+    <span class="num n-mint">10</span>
+    <span class="sum-text">
+      <span class="sum-title" style="display:block">Modelltext: allt ihop</span>
+      <span class="sum-sub" style="display:block">Samma innehåll som ditt original, i färdig form.</span>
+      <span class="sum-tags"><span class="chip strong">Facit</span></span>
+    </span>
+    <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+  </summary>
+  <div class="body">
+    <div class="core"><small>Kärnan</small>Ett förslag och inte den enda rätta versionen. Jämför gärna mening för mening med originalet i avsnitt 11.</div>
+    <div class="model">
+      <h4>Orsak till vård</h4>
+      <p>Du har vårdats hos oss för rehabilitering efter en förträngning i ryggradskanalen (spinal stenos). Förträngningen trycker på ryggmärgen på flera ställen, och därför gick det inte att operera.</p>
+      <p>Under vårdtiden fick du en urinvägsinfektion, som behandlades med antibiotika. Efter behandlingen fick du lös avföring. Vi tog ett prov, och det var normalt.</p>
+      <p>Under vårdtiden har du:</p>
+      <ul class="clean">
+        <li>fått en kateter genom huden ovanför blygdbenet (suprapubisk kateter) i stället för en kateter genom urinröret</li>
+        <li>tränat bålbalans och att använda rullstol med fysioterapeut och arbetsterapeut</li>
+        <li>deltagit i två planeringsmöten.</li>
+      </ul>
+      <p>Du behöver hjälp med det mesta i hemmet. Vid vårdplaneringen beviljades du därför korttidsboende.</p>
+
+      <h4>Läkemedelsberättelse</h4>
+      <p><b>Nya läkemedel:</b> Baklofen 10 mg, en halv tablett en gång per dag (5 mg). Varför: för att minska kramp och stelhet i underbenen. Du har fått ett separat recept.<br><b>Ändrade läkemedel:</b> Inga.<br><b>Utsatta läkemedel:</b> Inga.</p>
+
+      <h4>Restriktion</h4>
+      <p>Du får tillfälligt inte köra bil (tidsbegränsat muntligt körförbud).</p>
+
+      <h4>Planering</h4>
+      <p>Vi har skickat remisser till:</p>
+      <ul class="clean">
+        <li>din vårdcentral. Där bedömer de om du behöver en remiss till osteoporosmottagningen eller minnesmottagningen.</li>
+        <li>Ryggmärgsmottagningen i [ort].</li>
+        <li>urologmottagningen, för uppföljning av katetern. Katetern ska bytas om cirka tre månader.</li>
+      </ul>
+
+      <h4>Kontakt efter utskrivning</h4>
+      <p>Om du har frågor om din vårdtid, ring [sjukhusets] växel på [nummer] och be att bli kopplad till avdelning [X]. Du kan också skicka ett meddelande till oss via 1177.</p>
+    </div>
+  </div>
+</details>
+
+<!-- 11 SOURCE TEXT -->
+<details class="sec">
+  <summary>
+    <span class="num n-lav">11</span>
+    <span class="sum-text">
+      <span class="sum-title" style="display:block">Originaltexten, före och efter</span>
+      <span class="sum-sub" style="display:block">Transkriberad från bilderna. [X] = överstruket.</span>
+      <span class="sum-tags"><span class="chip bg">Källa</span></span>
+    </span>
+    <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+  </summary>
+  <div class="body">
+    <div class="core"><small>Kärnan</small>Läkemedelslistan och alla namn, nummer och orter är utelämnade.</div>
+    <h3>Före</h3>
+<div class="doc">ORSAK TILL VÅRD
+Du har kommit till oss för rehabilitering efter spinalstenos som inte gick operera som den satte sig flera ställen i ryggmärgen. Det har fått en urinvägsinfektion därför antibiotikabehandling. Har dock spasmer i underbenen och därför du testar behandling med Baklofen 1/2 tabl./dag.
+
+Du har fått en suprapubisk kateter istaället för kvarliggande urinkateter och har fått två planeringsmöten. Det fick även träna bålbalans och träna använda rullstol med fysioterapeut arbetsterapeut. Behöver hjälp med det mesta i hemmet därför en vårdplanering med beviljat korttidsboende.
+
+AKTUELL LÄKEMEDELSORDINATION
+[Läkemedelslistan utelämnad]
+
+LÄKEMEDELSBERÄTTELSE
+Du blev insatt på Baklofen 10 mg 0,5 x 1 för att minska spasticiteten spasmer i underbenen. Finns i separat recept.
+
+REKOMMENDATION LEVNADSVANOR
+Alkohol Avstå
+Tobak Avstå
+
+RESTRIKTION
+Tidsbegränsat muntligt körförbud
+
+PLANERING
+- Remiss är skickat till din vårdcentral ( Vc bedömmer om det finns behov av att remittera till Osteoporosmottagning och Minnesmottagning vid behov.)
+- Remiss är skickat till Ryggmärgsmottagnin[X]
+- Remiss även skickad till urologen för fortsatt uppföljning av suprapubiskateter.
+- Byte suprapubiskateter om ca tre månader
+
+KONTAKT EFTER UTSKRIVNING
+Om har frågor gällande din vistelse på avdelning [X] kan du kontakta [X] växel på [X] och be de bli kopplad till avdelning [X] men de kan också skriva meddelande på din 1177.</div>
+    <h3>Efter</h3>
+<div class="doc">ORSAK TILL VÅRD
+Du har kommit till oss för rehabilitering efter spinalstenos som hade satt sig på flera ställen i ryggmärgen och inte gick att operera.
+Under tiden hos oss har du erhållit en urinvägsinfektion som har behandlats med antibiotika.
+Efter denna behandling fick du lös avföring varpå odling genomfördes och bedömdes normal, inga tecken till växt av bakterier.
+
+Du har:
+-Fått en suprapubisk kateter istället för en kvarliggande och genomgått två planeringsmöten.
+-Tränat bål, balans och rullstol med fysioterapeut arbetsterapeut.
+-Behov av hjälp i vardagen och därför har du under din vårdplanering fått beviljat korttidsboende.
+
+LÄKEMEDELSBERÄTTELSE
+Nya läkemedel: Baklofen 10mg tab, 1/2 per dag - motsvarande 5mg. Orsak: Mot spasmer i underbenen - se separat recept.
+
+PLANERING
+Remisser har skickats till:
+-Din vårdcentral, som hjälper dig till Osteoporos- och/eller Minnesmottagningen vid behov.
+-Ryggmärgsmottagningen i [X]
+-Urologen (för kateteruppföljning - byte inom 3 mån.)
+
+KONTAKT EFTER UTSKRIVNING
+Vid frågor gällande din vistelse på avdelning [X] kontakta [X] växel via [X].
+De kan koppla dig till oss på avdelning [X] alternativt meddela dig via 1177.</div>
+  </div>
+</details>
+
+<!-- 12 CHECKLIST -->
+<details class="sec">
+  <summary>
+    <span class="num n-butter">12</span>
+    <span class="sum-text">
+      <span class="sum-title" style="display:block">60-sekunderskollen före signering</span>
+      <span class="sum-sub" style="display:block">Bocka av en gång per berättelse.</span>
+      <span class="sum-tags"><span class="chip easy">Snabb vinst</span></span>
+    </span>
+    <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+  </summary>
+  <div class="body">
+    <div class="core"><small>Kärnan</small>Sex frågor som fångar nästan alla fel i texten ovan.</div>
+    <div class="check">
+      <label><input type="checkbox"><span>Har varje mening ett <b>du</b> (eller ett annat subjekt) och ett <b>verb</b>?</span></label>
+      <label><input type="checkbox"><span>Står verbet på <b>plats två</b> efter <i>därför / sedan / under vårdtiden</i>?</span></label>
+      <label><input type="checkbox"><span>Står det <b>att</b> efter <i>gick / försöka / träna på</i>, och <b>eftersom</b> (inte "som") vid orsak?</span></label>
+      <label><input type="checkbox"><span>Finns det <b>inga förkortningar</b> eller doskoder (Vc, 0,5 x 1, ca, mån.)?</span></label>
+      <label><input type="checkbox"><span>Har varje nytt, ändrat eller utsatt läkemedel ett <b>varför</b>? Är alla datum ifyllda?</span></label>
+      <label><input type="checkbox"><span>Har <b>stavningskontrollen</b> körts, utan mellanslag före <b>) : ?</b>?</span></label>
+    </div>
+    <div class="co strong"><span class="lbl">Till sist</span><p>Sju år som läkare på ett andraspråk är en stor prestation. Det medicinska innehållet i din text var redan rätt. Med de här små vanorna blir även språket det.</p></div>
+  </div>
+</details>
+
+<footer>Underlag: en avidentifierad utskrivningstext, före och efter språkgenomgång. Endast för internt lärande.</footer>
+</main>
+
+<script>
+(function(){
+  var btn=document.getElementById('toggleAll');
+  var secs=[].slice.call(document.querySelectorAll('details.sec'));
+  function sync(){
+    var allOpen=secs.every(function(d){return d.open});
+    btn.textContent=allOpen?'Stäng alla':'Öppna alla';
+    btn.setAttribute('aria-pressed',allOpen?'true':'false');
+  }
+  btn.addEventListener('click',function(){
+    var open=!secs.every(function(d){return d.open});
+    secs.forEach(function(d){d.open=open});
+    sync();
+  });
+  secs.forEach(function(d){d.addEventListener('toggle',sync)});
+})();
+</script>
+</body>
+</html>
